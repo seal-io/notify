@@ -2,6 +2,8 @@ package mail
 
 import (
 	"context"
+	"crypto/tls"
+	"net"
 	"net/smtp"
 	"net/textproto"
 
@@ -15,6 +17,7 @@ type Mail struct {
 	smtpHostAddr      string
 	smtpAuth          smtp.Auth
 	receiverAddresses []string
+	tls               bool
 }
 
 // New returns a new instance of a Mail notification service.
@@ -40,6 +43,11 @@ func (m *Mail) AddReceivers(addresses ...string) {
 	m.receiverAddresses = append(m.receiverAddresses, addresses...)
 }
 
+// EnableTLS use tls/ssl to connect
+func (m *Mail) EnableTLS() {
+	m.tls = true
+}
+
 // Send takes a message subject and a message body and sends them to all previously set chats. Message body supports
 // html as markup language.
 func (m Mail) Send(ctx context.Context, subject, message string) error {
@@ -57,7 +65,17 @@ func (m Mail) Send(ctx context.Context, subject, message string) error {
 	case <-ctx.Done():
 		err = ctx.Err()
 	default:
-		err = msg.Send(m.smtpHostAddr, m.smtpAuth)
+		if m.tls {
+			var serverName string
+			serverName, _, err = net.SplitHostPort(m.smtpHostAddr)
+			if err != nil {
+				return err
+			}
+			err = msg.SendWithTLS(m.smtpHostAddr, m.smtpAuth, &tls.Config{ServerName: serverName})
+		} else {
+			err = msg.Send(m.smtpHostAddr, m.smtpAuth)
+		}
+
 		if err != nil {
 			err = errors.Wrap(err, "failed to send mail")
 		}

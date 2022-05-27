@@ -37,6 +37,17 @@ func (m *Mail) AuthenticateSMTP(identity, userName, password, host string) {
 	m.smtpAuth = smtp.PlainAuth(identity, userName, password, host)
 }
 
+// LoginAuth authenticates you to send emails via smtp.
+// Example values: "test@gmail.com", "password123"
+// For more information about smtp authentication, see here:
+//    -> https://pkg.go.dev/net/smtp#Auth
+func (m *Mail) LoginAuth(userName, password string) {
+	m.smtpAuth = &loginAuth{
+		username: userName,
+		password: password,
+	}
+}
+
 // AddReceivers takes email addresses and adds them to the internal address list. The Send method will send
 // a given message to all those addresses.
 func (m *Mail) AddReceivers(addresses ...string) {
